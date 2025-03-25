@@ -14,20 +14,17 @@ class PostViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        author = self.request.user
-        serializer.save(author=author)
+        serializer.save(author=self.request.user)
 
     def perform_update(self, serializer):
-        user = self.request.user
-        if serializer.instance.author != user:
+        if serializer.instance.author != self.request.user:
             raise PermissionDenied("Нельзя редактировать чужой пост")
-        serializer.save()
+        super().perform_update(serializer)
 
     def perform_destroy(self, post):
-        user = self.request.user
-        if post.author != user:
+        if post.author != self.request.user:
             raise PermissionDenied("Нельзя удалить чужой пост")
-        post.delete()
+        super().perform_destroy(post)
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
@@ -44,21 +41,20 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         post = get_object_or_404(Post, pk=self.kwargs['post_id'])
-        return Comment.objects.filter(post=post)
+        return post.comments.all()
 
     def perform_create(self, serializer):
-        author = self.request.user
-        post = get_object_or_404(Post, pk=self.kwargs['post_id'])
-        serializer.save(author=author, post=post)
+        serializer.save(
+            author=self.request.user,
+            post=get_object_or_404(Post, pk=self.kwargs['post_id'])
+        )
 
     def perform_update(self, serializer):
-        user = self.request.user
-        if serializer.instance.author != user:
+        if serializer.instance.author != self.request.user:
             raise PermissionDenied("Нельзя редактировать чужой комментарий")
-        serializer.save()
+        super().perform_update(serializer)
 
     def perform_destroy(self, comment):
-        user = self.request.user
-        if comment.author != user:
+        if comment.author != self.request.user:
             raise PermissionDenied("Нельзя удалить чужой комментарий")
-        comment.delete()
+        super().perform_destroy(comment)
